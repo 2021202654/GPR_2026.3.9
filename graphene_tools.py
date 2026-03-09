@@ -1,6 +1,7 @@
 # graphene_tools.py (适配 Physics-Augmented Log Learning)
 import json
 import io
+import ast
 import base64
 import numpy as np
 import pandas as pd
@@ -138,46 +139,60 @@ def inverse_design_tool(target_k: float, length_um: float, temperature_k: float)
 
 @tool
 def plot_trend_tool(variable: str, fixed_params: str) -> str:
-    """[可视化] 绘制热导率随变量变化的趋势图。"""
+    """[可视化] 绘制热导率随变量变化的趋势图。
+    注意：
+    1. variable 必须严格为 'temperature', 'length' 或 'defect'。
+    2. fixed_params 必须是合法的 JSON 字符串，例如 '{"length_um": 10.0, "temperature": 300.0, "defect_ratio": 0.001}'
+    """
     try:
-        params = json.loads(fixed_params)
-        length = params.get('length_um', 10.0)
-        temp = params.get('temperature', 300.0)
-        defect = params.get('defect_ratio', 0.001)
+        # 1. 容错解析参数 (应对 LLM 传错格式)
+        try:
+            params = json.loads(fixed_params)
+        except:
+            try:
+                # 尝试解析类似于字典的字符串
+                params = ast.literal_eval(fixed_params) if '{' in fixed_params else {}
+            except:
+                params = {}
+
+        # 兼容 LLM 可能使用的不同命名习惯
+        length = params.get('length_um', params.get('length', 10.0))
+        temp = params.get('temperature', params.get('temperature_k', 300.0))
+        defect = params.get('defect_ratio', params.get('defect', 0.001))
         
         x_vals = []
         y_vals = []
         theory_vals = []
         x_label = ""
         
-        if variable == 'temperature':
+        # 2. 变量名容错判断 (转换为小写并模糊匹配)
+        var_lower = variable.lower()
+        
+        if 'temp' in var_lower:
             x_vals = np.linspace(100, 600, 20)
             x_label = "Temperature (K)"
             for t in x_vals:
-                # 🚨 修复：加一个 _ 接收 warning_msg
                 k, _, th, _ = _predict_core(length, t, defect)
                 y_vals.append(k)
                 theory_vals.append(th)
-        elif variable == 'defect':
+        elif 'defect' in var_lower:
             x_vals = np.linspace(0.0, 0.02, 20)
             x_label = "Defect Ratio"
             for d in x_vals:
-                # 🚨 修复：加一个 _ 接收 warning_msg
                 k, _, th, _ = _predict_core(length, temp, d)
                 y_vals.append(k)
                 theory_vals.append(th)
-        elif variable == 'length':
+        elif 'length' in var_lower:
             x_vals = np.linspace(1.0, 50.0, 20)
             x_label = "Length (um)"
             for l in x_vals:
-                # 🚨 修复：加一个 _ 接收 warning_msg
                 k, _, th, _ = _predict_core(l, temp, defect)
                 y_vals.append(k)
                 theory_vals.append(th)
         else:
-            return "不支持的变量类型"
+            return f"不支持的变量类型: '{variable}'。请务必使用 'temperature', 'length' 或 'defect'。"
 
-        # 🚨 我们之前提到的线程安全面向对象画图法也融合进来了
+        # 3. 线程安全的面向对象绘图
         fig, ax = plt.subplots(figsize=(7, 4))
         ax.plot(x_vals, y_vals, 'o-', color='#d62728', linewidth=2, label='AI Prediction')
         ax.plot(x_vals, theory_vals, '--', color='gray', alpha=0.6, label='Physics Formula')
@@ -193,12 +208,12 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         fig.savefig(buf, format='png', dpi=100)
         buf.seek(0)
         img_str = base64.b64encode(buf.read()).decode('utf-8')
-        plt.close(fig) # 显式释放内存
+        plt.close(fig) 
 
         return f"![trend_plot](data:image/png;base64,{img_str})"
 
     except Exception as e:
-        return f"绘图失败: {e}"
+        return f"绘图失败: {str(e)}"
 
 @tool
 def physics_calculation_tool(temperature_k: float, defect_ratio: float, length_um: float = 10.0, **kwargs) -> str:
@@ -223,3 +238,4 @@ def physics_calculation_tool(temperature_k: float, defect_ratio: float, length_u
     except Exception as e:
 
         return f"物理计算出错: {str(e)}"
+
