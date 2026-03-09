@@ -1,0 +1,21 @@
+[
+  "layers",
+  "c12_purity",
+  "defect_ratio",
+  "strain",
+  "is_suspended",
+  "log10_length_nm",
+  "log10_thermal_conductivity",
+  "doping_concentration",
+  "log_length",
+  "log_defect",
+  "iso_factor",
+  "chem_factor",
+  "md_potential_clean_AIREBO",
+  "md_potential_clean_Not_Applicable",
+  "md_potential_clean_Other_MD",
+  "md_potential_clean_REBO",
+  "md_potential_clean_Tersoff",
+  "md_potential_clean_Tersoff_Optimized",
+  "md_potential_clean_Tersoff_Original"
+]
