@@ -1,6 +1,6 @@
 # graphene_agent.py
 from langchain_openai import ChatOpenAI
-from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
+from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.memory import ConversationBufferMemory
 # 🔥 引入所有新工具
@@ -60,3 +60,4 @@ def build_agent(api_key, base_url, model_name):
     
 
     return agent_executor
+
