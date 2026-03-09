@@ -193,7 +193,6 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         ax.plot(x_vals, y_vals, 'o-', color='#d62728', linewidth=2, label='AI Prediction')
         ax.plot(x_vals, theory_vals, '--', color='gray', alpha=0.6, label='Physics Formula')
         
-        # ... 前面的计算和绘图代码保持不变 ...
         ax.grid(True, linestyle='--', alpha=0.6)
         ax.set_xlabel(x_label)
         ax.set_ylabel("Thermal Conductivity (W/mK)")
@@ -201,25 +200,12 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         ax.legend()
         fig.tight_layout()
 
-        # 将图片保存到内存中
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=100)
-        buf.seek(0)
-        img_str = base64.b64encode(buf.read()).decode('utf-8')
+        # 🚀 修改这里：直接将图片保存为本地文件
+        fig.savefig("trend_plot.png", format='png', dpi=150)
         plt.close(fig) 
 
-        # 🚀 终极魔法：构造 Markdown 并直接注入 Streamlit 的历史记忆中
-        img_md = f"![trend_plot](data:image/png;base64,{img_str})"
-        
-        # 1. 立即在当前对话框中渲染图片
-        st.markdown(img_md, unsafe_allow_html=True)
-        
-        # 2. 存入 session_state，保证它在页面刷新和后续对话中永远存在！
-        if "messages" in st.session_state:
-            st.session_state.messages.append({"role": "assistant", "content": img_md})
-
-        # 3. 告诉 Agent 任务完成，只需解释趋势即可
-        return "图片已成功生成并存入系统，前端已完美展示。请基于物理规律简要总结图表趋势即可，绝对不要在你的回复中再尝试输出图片链接或代码。"
+        # 给大模型返回一句纯文本的“捷报”
+        return "SUCCESS: 趋势图已成功生成并保存为 trend_plot.png。请直接基于物理规律为用户分析趋势，绝对不要在回复中输出任何图片链接、Markdown或代码。"
 
     except Exception as e:
         return f"绘图失败: {str(e)}"
@@ -247,6 +233,7 @@ def physics_calculation_tool(temperature_k: float, defect_ratio: float, length_u
     except Exception as e:
 
         return f"物理计算出错: {str(e)}"
+
 
 
 
