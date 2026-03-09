@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from graphene_agent import build_agent 
 
 # --- 1. 页面基础配置 ---
@@ -55,7 +56,11 @@ if "messages" not in st.session_state:
 
 # --- 5. 渲染历史消息 ---
 for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"], unsafe_allow_html=True)
+        # 如果历史消息里存了图片，就把它画出来
+        if "image" in msg:
+            st.image(msg["image"])
 
 # --- 6. 处理用户输入 ---
 if prompt_input := st.chat_input("请输入你的科研问题..."):
@@ -72,19 +77,30 @@ if prompt_input := st.chat_input("请输入你的科研问题..."):
     with st.chat_message("assistant"):
         try:
             with st.spinner("Agent 正在思考并调用工具..."):
-                # 获取缓存的 Agent (它现在拥有以前的记忆了)
                 executor = get_agent_executor(api_key, base_url, model_name)
-                
-                # 直接调用，Memory 会自动处理历史记录
                 response = executor.invoke({"input": prompt_input})
-                
                 output_text = response["output"]
+                
+                # 先渲染大模型输出的文字
                 st.markdown(output_text, unsafe_allow_html=True)
                 
-            # 保存助手回复到历史
-            st.session_state.messages.append({"role": "assistant", "content": output_text})
+            # 🚀 拦截器：检查工具是否在后台生成了图片
+            img_bytes = None
+            if os.path.exists("trend_plot.png"):
+                st.image("trend_plot.png")  # 立即在界面上显示图表
+                
+                # 把图片读成二进制存起来，确保刷新页面不丢失
+                with open("trend_plot.png", "rb") as f:
+                    img_bytes = f.read()
+                os.remove("trend_plot.png") # 阅后即焚，保持服务器干净
+                
+            # 保存到系统记忆中
+            msg_data = {"role": "assistant", "content": output_text}
+            if img_bytes:
+                msg_data["image"] = img_bytes # 把图片也塞进记忆里
+                
+            st.session_state.messages.append(msg_data)
             
         except Exception as e:
             st.error(f"发生错误: {str(e)}")
-            # 如果出错，可能是 Key 变了导致连接断开，清除缓存重试
             st.cache_resource.clear()
