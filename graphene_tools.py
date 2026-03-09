@@ -114,14 +114,16 @@ def inverse_design_tool(target_k: float, length_um: float, temperature_k: float)
         # 搜索范围
         def objective(defect):
             if defect < 0 or defect > 0.05: return 1e6
-            pred, _, _ = _predict_core(length_um, temperature_k, defect)
+            # 🚨 修复：加一个 _ 接收 warning_msg
+            pred, _, _, _ = _predict_core(length_um, temperature_k, defect)
             return abs(pred - target_k)
 
         res = minimize_scalar(objective, bounds=(0.0, 0.05), method='bounded')
         
         if res.success:
             found_defect = res.x
-            final_k, _, _ = _predict_core(length_um, temperature_k, found_defect)
+            # 🚨 修复：加一个 _ 接收 warning_msg
+            final_k, _, _, _ = _predict_core(length_um, temperature_k, found_defect)
             
             if abs(final_k - target_k) > target_k * 0.2:
                 return f"难以达到 {target_k} W/mK。即使缺陷为0，预测值也仅为 {final_k:.1f} W/mK。"
@@ -152,26 +154,30 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
             x_vals = np.linspace(100, 600, 20)
             x_label = "Temperature (K)"
             for t in x_vals:
-                k, _, th = _predict_core(length, t, defect)
+                # 🚨 修复：加一个 _ 接收 warning_msg
+                k, _, th, _ = _predict_core(length, t, defect)
                 y_vals.append(k)
                 theory_vals.append(th)
         elif variable == 'defect':
             x_vals = np.linspace(0.0, 0.02, 20)
             x_label = "Defect Ratio"
             for d in x_vals:
-                k, _, th = _predict_core(length, temp, d)
+                # 🚨 修复：加一个 _ 接收 warning_msg
+                k, _, th, _ = _predict_core(length, temp, d)
                 y_vals.append(k)
                 theory_vals.append(th)
         elif variable == 'length':
             x_vals = np.linspace(1.0, 50.0, 20)
             x_label = "Length (um)"
             for l in x_vals:
-                k, _, th = _predict_core(l, temp, defect)
+                # 🚨 修复：加一个 _ 接收 warning_msg
+                k, _, th, _ = _predict_core(l, temp, defect)
                 y_vals.append(k)
                 theory_vals.append(th)
         else:
             return "不支持的变量类型"
 
+        # 🚨 我们之前提到的线程安全面向对象画图法也融合进来了
         fig, ax = plt.subplots(figsize=(7, 4))
         ax.plot(x_vals, y_vals, 'o-', color='#d62728', linewidth=2, label='AI Prediction')
         ax.plot(x_vals, theory_vals, '--', color='gray', alpha=0.6, label='Physics Formula')
@@ -187,7 +193,7 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         fig.savefig(buf, format='png', dpi=100)
         buf.seek(0)
         img_str = base64.b64encode(buf.read()).decode('utf-8')
-        plt.close(fig) # 显式关闭当前 figure 释放内存
+        plt.close(fig) # 显式释放内存
 
         return f"![trend_plot](data:image/png;base64,{img_str})"
 
@@ -215,4 +221,5 @@ def physics_calculation_tool(temperature_k: float, defect_ratio: float, length_u
         }
         return f"计算成功: {json.dumps(analysis_data, ensure_ascii=False)}"
     except Exception as e:
+
         return f"物理计算出错: {str(e)}"
