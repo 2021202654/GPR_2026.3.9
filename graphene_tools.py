@@ -142,20 +142,18 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
     """[可视化] 绘制热导率随变量变化的趋势图。
     注意：
     1. variable 必须严格为 'temperature', 'length' 或 'defect'。
-    2. fixed_params 必须是合法的 JSON 字符串，例如 '{"length_um": 10.0, "temperature": 300.0, "defect_ratio": 0.001}'
+    2. fixed_params 必须是合法的 JSON 字符串。
     """
     try:
-        # 1. 容错解析参数 (应对 LLM 传错格式)
+        # 1. 容错解析参数
         try:
             params = json.loads(fixed_params)
         except:
             try:
-                # 尝试解析类似于字典的字符串
                 params = ast.literal_eval(fixed_params) if '{' in fixed_params else {}
             except:
                 params = {}
 
-        # 兼容 LLM 可能使用的不同命名习惯
         length = params.get('length_um', params.get('length', 10.0))
         temp = params.get('temperature', params.get('temperature_k', 300.0))
         defect = params.get('defect_ratio', params.get('defect', 0.001))
@@ -165,7 +163,6 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         theory_vals = []
         x_label = ""
         
-        # 2. 变量名容错判断 (转换为小写并模糊匹配)
         var_lower = variable.lower()
         
         if 'temp' in var_lower:
@@ -192,7 +189,6 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         else:
             return f"不支持的变量类型: '{variable}'。请务必使用 'temperature', 'length' 或 'defect'。"
 
-        # 3. 线程安全的面向对象绘图
         fig, ax = plt.subplots(figsize=(7, 4))
         ax.plot(x_vals, y_vals, 'o-', color='#d62728', linewidth=2, label='AI Prediction')
         ax.plot(x_vals, theory_vals, '--', color='gray', alpha=0.6, label='Physics Formula')
@@ -204,13 +200,18 @@ def plot_trend_tool(variable: str, fixed_params: str) -> str:
         ax.legend()
         fig.tight_layout()
 
+        # 将图片保存到内存中
         buf = io.BytesIO()
         fig.savefig(buf, format='png', dpi=100)
         buf.seek(0)
-        img_str = base64.b64encode(buf.read()).decode('utf-8')
+        
+        # 🚀 核心魔法：直接绕过大模型，调用 Streamlit 在聊天流中渲染图片！
+        st.image(buf, caption=f"Trend Analysis: Thermal Conductivity vs {variable}")
+        
         plt.close(fig) 
 
-        return f"![trend_plot](data:image/png;base64,{img_str})"
+        # 告诉 Agent 任务完成，只需解释趋势即可
+        return "图表已成功生成并在前端界面上展示给了用户。请基于物理规律，对图表中的总体趋势进行简要的文字总结即可，绝对不要再尝试输出图片代码或链接。"
 
     except Exception as e:
         return f"绘图失败: {str(e)}"
@@ -238,4 +239,5 @@ def physics_calculation_tool(temperature_k: float, defect_ratio: float, length_u
     except Exception as e:
 
         return f"物理计算出错: {str(e)}"
+
 
